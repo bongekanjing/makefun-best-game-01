@@ -2,16 +2,21 @@
   "1-start.jpg": {
     "width": 854,
     "height": 480,
-    "bytes": 32738
+    "bytes": 41402
   },
   "2-play.jpg": {
     "width": 854,
     "height": 480,
-    "bytes": 26280
+    "bytes": 28335
   },
   "3-end.jpg": {
     "width": 854,
     "height": 480,
-    "bytes": 30421
+    "bytes": 31520
+  },
+  "4-win.jpg": {
+    "width": 854,
+    "height": 480,
+    "bytes": 34567
   }
 }

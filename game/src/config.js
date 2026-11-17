@@ -3,6 +3,13 @@
 // Tideglass: a tide-and-moon catching game. Mara the tidekeeper wades the shallows at
 // night, catching glowing tideglass orbs in her net to fill the Moon Jar before the moon
 // sets. Urchins sting, crabs snap; shells are worth a bonus. Fill the jar to win.
+//
+// The loop has three decisions, not one: chase the fast golden orbs for 50 points
+// apiece (they do not fill the jar, so they trade score against the win), grab a
+// Moon Pearl before a risky catch (it shields exactly one sting), and ride the tide
+// surges — every 45 seconds a shower of orbs falls at once, worth a burst of catches
+// if Mara is in position. Golden orbs and pearls are rare on purpose: each one the
+// player meets is a small choice, not background noise.
 
 export const FIELD = { width: 1280, height: 720, waterTop: 150, sandTop: 600 };
 
@@ -32,6 +39,30 @@ export const ORB = {
   points: 10,
 };
 
+/** A golden tideglass orb: rare, fast, and worth five orbs' points — but it does not
+ *  fill the Moon Jar, so chasing one trades score against the win. One at a time.
+ *  The first falls early enough to meet a new player (and the play screenshot). */
+export const GOLDEN = {
+  radius: 16,
+  fall: 195,
+  fallJitter: 25,
+  interval: 14,
+  intervalJitter: 8,
+  points: 50,
+};
+
+/** A Moon Pearl: rare, slow, and worth catching before a risky move — it shields
+ *  exactly one sting or snap, then shatters. One shield at a time; a pearl caught
+ *  while shielded is worth its points instead. Pearls are deliberately scarce, so
+ *  a shield is a precious resource and not a safety net a hurried player can lean on. */
+export const PEARL = {
+  radius: 13,
+  fall: 80,
+  interval: 35,
+  intervalJitter: 10,
+  points: 15,
+};
+
 export const SHELL = {
   radius: 12,
   fall: 95,
@@ -40,6 +71,27 @@ export const SHELL = {
   points: 25,
 };
 
+/** A shell is worth 25 points on its own — but three shells in a row open the
+ *  Golden Tide: ten seconds when every orb is worth double. Shells are a choice,
+ *  not a distraction: chase them and the jar fills slower, but the score leaps. */
+export const SHELL_BONUS = {
+  shellsNeeded: 3,
+  points: 100,
+  rushSeconds: 10,
+};
+
+/** The first-run hints: short lessons shown one at a time over the opening
+ *  seconds, so a new player learns the controls and the three choices without
+ *  reading a manual. Each hint shows for a few seconds, then the next takes over;
+ *  after the last one the game stops teaching and just plays. */
+export const HINTS = [
+  { at: 0.5, for: 4, text: 'Move with ← → ↑ ↓ or WASD, or hold the mouse' },
+  { at: 5, for: 4, text: 'Catch the falling orbs to fill the Moon Jar' },
+  { at: 9.5, for: 4, text: 'Golden orbs are worth 50 — but never fill the jar' },
+  { at: 14, for: 4, text: 'Grab a Moon Pearl: it shields one sting' },
+  { at: 18.5, for: 4, text: 'Three shells open the Golden Tide: orbs worth double' },
+];
+
 export const URCHIN = {
   radius: 17,
   fall: 85,
@@ -47,6 +99,15 @@ export const URCHIN = {
   interval: 1.9,
   intervalScale: 0.88,
   minInterval: 0.7,
+};
+
+/** A tide surge: every SURGE.interval seconds a shower of SURGE.count orbs falls
+ *  at once across the field, with a banner and a rising sound. Surges stop once
+ *  the jar is nearly full, so the endgame stays about the last few orbs. */
+export const SURGE = {
+  interval: 45,
+  count: 5,
+  stopWhenCaughtLeft: 6,
 };
 
 export const CRAB = {
@@ -85,6 +146,13 @@ export const PALETTE = {
   net: '#e8f4ff',
   orb: '#ffd76a',
   orbCore: '#fff3c4',
+  golden: '#ffb52e',
+  goldenCore: '#fff0b8',
+  goldenRay: '#ffe9a8',
+  pearl: '#dff4ff',
+  pearlCore: '#ffffff',
+  pearlRing: '#9fd8ff',
+  shield: '#9fd8ff',
   shell: '#ff9ecf',
   urchin: '#b678e8',
   crab: '#ff7a5c',

@@ -1,6 +1,8 @@
 // Synthesised sound only: every effect is a few WebAudio oscillators and noise, built at
 // play time. No audio files, no network. The context is created on the first user gesture
-// (browsers refuse sound before one), and M mutes everything.
+// (browsers refuse sound before one), and M mutes everything. A short tune is written
+// as a list of notes and played by one helper, so each effect is a line of music
+// rather than a block of scheduling.
 
 export function createAudio() {
   let context = null;
@@ -69,6 +71,18 @@ export function createAudio() {
     }
   }
 
+  /** Play a list of notes in order, one every `gap` milliseconds. Each note is
+   *  [frequency, duration] or [frequency, duration, type, volume]. */
+  function sequence(notes, gap, fallbackType, fallbackVolume) {
+    notes.forEach((note, index) => {
+      const frequency = note[0];
+      const duration = note[1];
+      const type = note[2] ?? fallbackType;
+      const volume = note[3] ?? fallbackVolume;
+      window.setTimeout(() => tone(frequency, duration, type, volume), index * gap);
+    });
+  }
+
   return {
     /** Call from any user gesture so the browser lets sound start. */
     unlock() {
@@ -87,6 +101,30 @@ export function createAudio() {
       tone(base, 0.16, 'sine', 0.5);
       tone(base * 1.5, 0.22, 'triangle', 0.25);
     },
+    /** A golden orb: a bright three-note chime, higher than a plain catch. */
+    golden() {
+      sequence([[1047, 0.22], [1319, 0.22], [1568, 0.22]], 70, 'sine', 0.4);
+    },
+    /** A Moon Pearl: a soft two-note shimmer. */
+    pearl() {
+      tone(1175, 0.3, 'sine', 0.3);
+      tone(1568, 0.4, 'sine', 0.22);
+    },
+    /** A shield shattering: a bright crack over a low thud. */
+    shieldBreak() {
+      tone(2093, 0.12, 'square', 0.22);
+      tone(1568, 0.18, 'triangle', 0.3);
+      tone(160, 0.25, 'sawtooth', 0.35, 70);
+      noise(0.14, 0.3, 2400);
+    },
+    /** A tide surge: a fast rising run, like water coming in. */
+    surge() {
+      sequence([[392, 0.16], [494, 0.16], [587, 0.16], [784, 0.16]], 80, 'triangle', 0.35);
+    },
+    /** The Golden Tide opening: a bright five-note fanfare, gold and quick. */
+    bonus() {
+      sequence([[659, 0.16], [784, 0.16], [1047, 0.2], [1319, 0.24], [1568, 0.34]], 90, 'sine', 0.42);
+    },
     shell() {
       tone(784, 0.14, 'sine', 0.4);
       tone(1175, 0.26, 'sine', 0.3);
@@ -96,21 +134,13 @@ export function createAudio() {
       noise(0.18, 0.4, 900);
     },
     levelUp() {
-      tone(392, 0.12, 'triangle', 0.4);
-      tone(523, 0.12, 'triangle', 0.4);
-      tone(659, 0.24, 'triangle', 0.4);
+      sequence([[392, 0.12], [523, 0.12], [659, 0.24]], 0, 'triangle', 0.4);
     },
     win() {
-      const notes = [523, 659, 784, 1047, 1319];
-      notes.forEach((frequency, index) => {
-        window.setTimeout(() => tone(frequency, 0.5, 'sine', 0.4), index * 110);
-      });
+      sequence([[523, 0.5], [659, 0.5], [784, 0.5], [1047, 0.5], [1319, 0.5]], 110, 'sine', 0.4);
     },
     lose() {
-      const notes = [392, 330, 262, 196];
-      notes.forEach((frequency, index) => {
-        window.setTimeout(() => tone(frequency, 0.4, 'triangle', 0.35), index * 150);
-      });
+      sequence([[392, 0.4], [330, 0.4], [262, 0.4], [196, 0.4]], 150, 'triangle', 0.35);
     },
     splash() {
       noise(0.12, 0.16, 1600);

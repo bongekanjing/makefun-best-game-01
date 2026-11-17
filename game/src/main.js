@@ -2,12 +2,13 @@
 // (several in a slow frame, none in a fast one), and the renderer paints what is there. The
 // game moves between five screens: title, play, paused, win and game over.
 //
-// ?seed=N fixes the falling pattern. ?shot=start|play|end (with &seed=N) stages that scene
-// instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
+// ?seed=N fixes the falling pattern. ?shot=start|play|win|end (with &seed=N) stages that
+// scene instead of running the loop, paints it twice and sets window.__shotReady for a
+// screenshot. The win scene plays the careful pilot until the jar fills.
 
 import { BEST_KEY, JAR_GOAL, LIVES, PLAYER, STEP } from './config.js';
 import { createRandom } from './random.js';
-import { createWorld, EVENT_CATCH, EVENT_HIT, EVENT_LEVEL, EVENT_OVER, EVENT_SHELL, EVENT_WIN } from './world.js';
+import { createWorld, EVENT_BONUS, EVENT_CATCH, EVENT_GOLDEN, EVENT_HIT, EVENT_LEVEL, EVENT_OVER, EVENT_PEARL, EVENT_SHELL, EVENT_SHIELD, EVENT_SURGE, EVENT_WIN } from './world.js';
 import { ACTION_CONFIRM, ACTION_MUTE, ACTION_PAUSE, createInput } from './input.js';
 import { createAudio } from './audio.js';
 import { createRenderer, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE, SCREEN_WIN } from './render.js';
@@ -162,11 +163,24 @@ function runGame() {
     if (events & EVENT_WIN) endGame(true);
     else if (events & EVENT_OVER) endGame(false);
     else {
-      if (events & EVENT_CATCH) audio.catchOrb(world.state.combo);
-      if (events & EVENT_SHELL) audio.shell();
-      if (events & EVENT_HIT) {
+      if (events & EVENT_GOLDEN) audio.golden();
+      else if (events & EVENT_CATCH) audio.catchOrb(world.state.combo);
+      if (events & EVENT_PEARL) audio.pearl();
+      else if (events & EVENT_SHELL) audio.shell();
+      if (events & EVENT_SHIELD) {
+        audio.shieldBreak();
+        announce('Shield held! The pearl shattered instead.');
+      } else if (events & EVENT_HIT) {
         audio.hit();
         announce(world.state.lives === 1 ? 'Stung! 1 life left.' : `Stung! ${world.state.lives} lives left.`);
+      }
+      if (events & EVENT_SURGE) {
+        audio.surge();
+        announce('Tide surge! A shower of orbs!');
+      }
+      if (events & EVENT_BONUS) {
+        audio.bonus();
+        announce('Golden Tide! Orbs worth double for 10 seconds!');
       }
       if (events & EVENT_LEVEL) {
         audio.levelUp();

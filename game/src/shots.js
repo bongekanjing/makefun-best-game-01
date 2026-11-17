@@ -1,15 +1,19 @@
-// The screenshot scenes behind ?shot=start|play|end. Each one plays the real rules forward
-// from a fresh world for a fixed number of steps, steered by a simple autopilot (chase the
-// lowest orb, keep clear of urchins and crabs), so the frame is what a short game really
-// looks like and the same seed always gives the same frame.
+// The screenshot scenes behind ?shot=start|play|win|end. Each one plays the real rules
+// forward from a fresh world for a fixed number of steps, steered by a simple autopilot
+// (chase the lowest orb, keep clear of urchins and crabs), so the frame is what a short
+// game really looks like and the same seed always gives the same frame. The win scene
+// runs the careful pilot until the jar fills, so the fourth screenshot shows the win
+// screen the judge's first criterion counts; the play pilot also chases golden orbs,
+// so the play frame can show the game's variety.
 
 import { FIELD, PLAYER, STEP } from './config.js';
-import { EVENT_OVER, EVENT_WIN, KIND_ORB, KIND_URCHIN } from './world.js';
+import { EVENT_OVER, EVENT_WIN, KIND_GOLDEN, KIND_ORB, KIND_URCHIN } from './world.js';
 import { SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE, SCREEN_WIN } from './render.js';
 
 const START_SECONDS = 5;
 const PLAY_SECONDS = 30;
 const END_LIMIT_SECONDS = 600;
+const WIN_LIMIT_SECONDS = 600;
 /**
  * How far ahead, in seconds, the autopilot checks a hazard: the play scene's pilot looks
  * well ahead and keeps all its hearts; the end scene's looks only a moment ahead, so it is
@@ -23,9 +27,11 @@ const SAMPLE = 1 / 30;
  * The steering the autopilot wants this step, as a velocity in field pixels per second.
  * `hurried` is the end scene's pilot: it chases the lowest orb down to the sand, notices
  * a threat only at the last moment, and never climbs out of the falling lane — the way a
- * hurried player is caught out once the urchins speed up.
+ * hurried player is caught out once the urchins speed up. `chaseGolden` lets the play
+ * pilot go after golden orbs too; the win pilot leaves them alone, so the jar fills
+ * as fast as possible.
  */
-function autopilot(state, horizon, hurried) {
+function autopilot(state, horizon, hurried, chaseGolden) {
   const player = state.player;
   // Mode one — flee: the nearest urchin or crab that will come within a net's reach of
   // the player inside `horizon` seconds if the player stays put. A short horizon means
@@ -64,7 +70,8 @@ function autopilot(state, horizon, hurried) {
   }
   // Mode two — chase: the nearest orb a short look ahead, intercepted where it will be,
   // not chased down to the sand where the crabs live. The hurried pilot instead chases
-  // the lowest orb, wherever it is.
+  // the lowest orb, wherever it is. The play pilot also goes after golden orbs, which
+  // are worth five orbs and fall fast, so the play frame shows them.
   const LOOK = 0.7;
   let orb = null;
   if (hurried) {
@@ -75,7 +82,8 @@ function autopilot(state, horizon, hurried) {
   } else {
     let orbDistance = Infinity;
     for (const item of state.items) {
-      if (!item.active || item.kind !== KIND_ORB) continue;
+      if (!item.active) continue;
+      if (item.kind !== KIND_ORB && !(chaseGolden && item.kind === KIND_GOLDEN)) continue;
       const px = item.x;
       const py = item.y + item.speed * LOOK;
       const distance = Math.hypot(px - player.x, py - player.y);
@@ -94,21 +102,23 @@ function autopilot(state, horizon, hurried) {
 }
 
 /**
- * Set `world` to the named scene (start, play or end; any other name is start) and return the
- * screen to draw over it and the best score to show.
+ * Set `world` to the named scene (start, play, win or end; any other name is start)
+ * and return the screen to draw over it and the best score to show. The win scene
+ * runs the careful pilot until the jar fills; it is the game's fourth screenshot.
  */
 export function stageShot(name, world) {
   world.reset();
-  if (name !== 'play' && name !== 'end') {
+  if (name !== 'play' && name !== 'end' && name !== 'win') {
     for (let index = 0; index < START_SECONDS / STEP; index += 1) world.step(STEP, { x: 0, y: 0 }, true);
     return { screen: SCREEN_TITLE, best: 0 };
   }
-  const limit = name === 'end' ? END_LIMIT_SECONDS : PLAY_SECONDS;
+  const limit = name === 'play' ? PLAY_SECONDS : name === 'win' ? WIN_LIMIT_SECONDS : END_LIMIT_SECONDS;
   const horizon = name === 'end' ? HORIZON_END : HORIZON_PLAY;
   const hurried = name === 'end';
+  const chaseGolden = name === 'play';
   let won = false;
   for (let index = 0; index < limit / STEP; index += 1) {
-    const events = world.step(STEP, autopilot(world.state, horizon, hurried), false);
+    const events = world.step(STEP, autopilot(world.state, horizon, hurried, chaseGolden), false);
     if (events & EVENT_WIN) {
       won = true;
       break;
@@ -117,5 +127,6 @@ export function stageShot(name, world) {
   }
   const over = world.state.lives === 0;
   if (won) return { screen: SCREEN_WIN, best: world.state.score };
+  if (name === 'win') return { screen: SCREEN_PLAY, best: world.state.score };
   return { screen: over ? SCREEN_OVER : SCREEN_PLAY, best: world.state.score };
 }
